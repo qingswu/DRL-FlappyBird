@@ -4,10 +4,11 @@
 # Date: 2016.3.21
 # -----------------------------
 
-import mxnet as mx 
-import numpy as np 
+import mxnet as mx
+import numpy as np
 import random
-from collections import deque 
+from collections import deque
+import os
 
 # Hyper Parameters:
 FRAME_PER_ACTION = 1
@@ -19,7 +20,8 @@ INITIAL_EPSILON = 0#0.01 # starting value of epsilon
 REPLAY_MEMORY = 50000 # number of previous transitions to remember
 BATCH_SIZE = 32 # size of minibatch
 UPDATE_TIME = 100
-ctx=mx.cpu()
+#ctx=mx.cpu()
+ctx=mx.gpu(1)
 
 def dataPrep(data):
     if data.shape[2]>1:
@@ -103,7 +105,7 @@ class BrainDQN:
             modQ.init_params(initializer=mx.init.Xavier(factor_type="in", magnitude=2.34),arg_params=bef_args)
 
         return modQ
-             
+
     def copyTargetQNetwork(self):
         arg_params,aux_params=self.Qnet.get_params()
         #arg={}
@@ -126,7 +128,7 @@ class BrainDQN:
         reward_batch =  np.squeeze([data[2] for data in minibatch])
         nextState_batch =  [data[3] for data in minibatch]
 
-        # Step 2: calculate y 
+        # Step 2: calculate y
         y_batch = np.zeros((BATCH_SIZE,))
         Qvalue=[]
         for i in range(BATCH_SIZE):
@@ -144,6 +146,8 @@ class BrainDQN:
 
         # save network every 1000 iteration
         if self.timeStep % 100 == 0:
+            if not os.path.exists('./saved_networks'):
+                os.mkdir('./saved_networks')
             self.Qnet.save_params('saved_networks/network-dqn_mx%04d.params'%(self.timeStep))
 
         if self.timeStep % UPDATE_TIME == 0:
@@ -153,7 +157,7 @@ class BrainDQN:
     def setInitState(self,observation):
         temp=dataPrep(np.stack((observation, observation, observation, observation), axis = 2))
         self.currentState = temp
-    
+
     def setPerception(self,nextObservation,action,reward,terminal):
         #newState = np.append(nextObservation,self.currentState[:,:,1:],axis = 2)
 
